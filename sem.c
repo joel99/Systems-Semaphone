@@ -78,6 +78,7 @@ void main(int argc, char* argv[]){
     else{
       printf("There is no text in story.txt\n");
     }
+    close(fd);
     
   }
 
@@ -109,6 +110,7 @@ void main(int argc, char* argv[]){
     else{
       printf("There is no text in story.txt\n");
     }
+    close(fd);
     
   }
 
