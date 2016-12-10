@@ -8,6 +8,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <sys/shm.h>
 
 void main(int argc, char* argv[]){
 
@@ -35,7 +36,7 @@ void main(int argc, char* argv[]){
     
     //Creating a semaphore
     int sd = semget(key, 1, IPC_CREAT | 0644);
-    if (sd > 0){
+    if (sd >= 0){
       printf("Created a semaphore with id: %d\n", sd);
       sc.val = 1;
       semctl(sd, 0, SETVAL, sc);
@@ -50,9 +51,14 @@ void main(int argc, char* argv[]){
     close(fd);
 
     //Creating shared memory
-    int shmid = shmget(key, 100, IPC_CREAT);
-    if (shmid > 0){
+    int shmid = shmget(key, 100, IPC_CREAT | 0644);
+    if (shmid >= 0){
       printf("Created a shared memory with id: %d\n", shmid);
+      //clear it.
+      int * shm;
+      shm = (int *) shmat(shmid, 0, 0);
+      *shm = 0;
+      shmdt(shm);
     }
     else{
       printf("Shared Memory Creation Failed!");
@@ -92,7 +98,7 @@ void main(int argc, char* argv[]){
 
     //Removing the shared memory
     int shmid = shmget(key, 100, IPC_CREAT);
-    shmctl(shmid, IPC_RMID);
+    shmctl(shmid, IPC_RMID, NULL);
     printf("Removed shared memory\n");
     
     //Displaying the contents of the file
@@ -106,6 +112,11 @@ void main(int argc, char* argv[]){
       read(fd, buf, size);
       printf("%s", buf);
       printf("End of story.txt\n");
+
+      //clear file
+      close(fd);
+      fd=open("story.txt",O_RDONLY | O_WRONLY | O_TRUNC);
+      
     }
     else{
       printf("There is no text in story.txt\n");

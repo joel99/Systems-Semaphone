@@ -6,6 +6,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <sys/shm.h>
 
 int main(int argc, char * argv[]){
 
@@ -20,37 +21,45 @@ int main(int argc, char * argv[]){
   sb.sem_num = 0;
   sb.sem_flg = SEM_UNDO;
   sb.sem_op = -1;
-  
+  printf("Requesting access to story, please hold.\n");
   semop(semid, &sb, 1);
-
-  int shmid = shmget(key, 100, IPC_EXCL);
+  printf("Access granted.\n");
+  
+  int shmid = shmget(key, 100, 0644);
   int * shm;
-  shmat(shmid, shm, 0); //attach
-  char * lastLine;
+  shm = (int *)shmat(shmid, 0, 0); //attach
+  char lastLine[(*shm) + 1];
+  
   //set fd offset to last newline
-  lseek(fd, *shm, SEEK_SET);
+  
+  lseek(fd, -(*shm), SEEK_END);
   //read lastLine
-  read(fd, lastLine, 100);
-  printf("The last line was: \n %s", lastLine);
+  int readLen = read(fd, lastLine, *shm);
+  //terminate the string
+  lastLine[readLen] = 0;
+  if (!readLen)
+    printf("You are the first contributor.\n");
+  else {
+    printf("The last message was: \n\n\t%s\n", lastLine);
+  }
   //store back into shm
   
-  printf("Please enter your addition: \n");
-  char read[256];
-  char * s = read;
-  fgets(read, sizeof(read), stdin);
+  printf("Please enter your addition:\t");
+  char msg[256];
+  fgets(msg, sizeof(msg), stdin);
 
-  printf("Well that's done\n");
-  lseek(fd, 0, SEEK_END); //reposition file offset
-  write(fd, s, 256);//write to file
-  //get new offset
-  * shm = lseek(fd, 0, SEEK_CUR);
-
+  * shm = strlen(msg);
+  
   //great!
-  shmdt(shm);
+  
+  //lseek(fd, 0, SEEK_END);
+  write(fd, msg, * shm);//write to file
   close(fd);
 
+  shmdt(shm);
   //up the sem
   sb.sem_op = 1;
   semop(semid, &sb, 1);
 
+  return 0;
 }
